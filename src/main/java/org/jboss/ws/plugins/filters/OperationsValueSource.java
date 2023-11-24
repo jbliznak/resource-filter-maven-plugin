@@ -27,9 +27,8 @@ import java.util.Properties;
 import java.util.StringTokenizer;
 
 import org.codehaus.plexus.interpolation.ValueSource;
-import org.codehaus.plexus.logging.AbstractLogEnabled;
 
-public class OperationsValueSource extends AbstractLogEnabled implements ValueSource {
+public class OperationsValueSource implements ValueSource {
 	
 	private static final String ADD_INT = "add_int";
 	private Properties properties;

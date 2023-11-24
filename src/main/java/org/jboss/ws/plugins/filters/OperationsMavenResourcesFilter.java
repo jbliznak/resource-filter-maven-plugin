@@ -24,16 +24,21 @@ package org.jboss.ws.plugins.filters;
 import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 
+import org.apache.commons.io.FilenameUtils;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Resource;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.settings.Settings;
+import org.apache.maven.shared.filtering.FilterWrapper;
 import org.apache.maven.shared.filtering.FilteringUtils;
 import org.apache.maven.shared.filtering.MavenFileFilter;
 import org.apache.maven.shared.filtering.MavenFilteringException;
@@ -48,15 +53,12 @@ import org.codehaus.plexus.interpolation.SimpleRecursionInterceptor;
 import org.codehaus.plexus.interpolation.SingleResponseValueSource;
 import org.codehaus.plexus.interpolation.ValueSource;
 import org.codehaus.plexus.interpolation.multi.MultiDelimiterStringSearchInterpolator;
-import org.codehaus.plexus.logging.AbstractLogEnabled;
-import org.codehaus.plexus.personality.plexus.lifecycle.phase.Initializable;
-import org.codehaus.plexus.personality.plexus.lifecycle.phase.InitializationException;
-import org.apache.maven.shared.utils.io.FileUtils;
-import org.apache.maven.shared.utils.io.FileUtils.FilterWrapper;
 import org.codehaus.plexus.util.PathTool;
 import org.codehaus.plexus.util.ReaderFactory;
 import org.codehaus.plexus.util.Scanner;
 import org.codehaus.plexus.util.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.sonatype.plexus.build.incremental.BuildContext;
 
 /**
@@ -64,8 +66,14 @@ import org.sonatype.plexus.build.incremental.BuildContext;
  * @plexus.component role="org.apache.maven.shared.filtering.MavenResourcesFiltering"
  *                   role-hint="custom"
  */
-public class OperationsMavenResourcesFilter extends AbstractLogEnabled implements MavenResourcesFiltering,
-        Initializable {
+public class OperationsMavenResourcesFilter implements MavenResourcesFiltering {
+
+    private final Logger logger = LoggerFactory.getLogger( getClass() );
+
+    protected Logger getLogger()
+    {
+        return logger;
+    }
     
     private static final String[] EMPTY_STRING_ARRAY = {};
 
@@ -85,13 +93,6 @@ public class OperationsMavenResourcesFilter extends AbstractLogEnabled implement
     private List<ValueSourceCreator> valueSourceCreators;
 
     
-    // ------------------------------------------------
-    //  Plexus lifecycle
-    // ------------------------------------------------
-    @Override
-    public void initialize() throws InitializationException {
-    }
-
     /**
      * @plexus.requirement
      *  role-hint="default"
@@ -104,8 +105,7 @@ public class OperationsMavenResourcesFilter extends AbstractLogEnabled implement
         if (userNonFilteredFileExtensions != null) {
             nonFilteredFileExtensions.addAll(userNonFilteredFileExtensions);
         }
-        final boolean filteredFileExtension = !nonFilteredFileExtensions.contains(StringUtils.lowerCase(FileUtils
-                .extension(fileName)));
+        final boolean filteredFileExtension = !nonFilteredFileExtensions.contains(StringUtils.lowerCase(FilenameUtils.getExtension(fileName)));
         if (this.getLogger().isDebugEnabled()) {
             this.getLogger().debug("file " + fileName + " has a" + (filteredFileExtension ? " " : " non ")
                     + "filtered file extension");
@@ -237,8 +237,9 @@ public class OperationsMavenResourcesFilter extends AbstractLogEnabled implement
                     File tempFile = null;
                     try {
                         tempFile = File.createTempFile(destinationFile.getName(), ".tmp", destinationFile.getParentFile());
-                        FileUtils.copyFile(destinationFile, tempFile);
-                        
+                        Files.copy(destinationFile.toPath(), tempFile.toPath(), LinkOption.NOFOLLOW_LINKS,
+                                StandardCopyOption.REPLACE_EXISTING);
+
                         this.mavenFileFilter.copyFile(tempFile,
                                 destinationFile,
                                 true,
@@ -263,8 +264,8 @@ public class OperationsMavenResourcesFilter extends AbstractLogEnabled implement
     /**
      * Adds a new FilterWrapper that uses the specified value source
      */
-    protected FileUtils.FilterWrapper createFilterWrapper(final MavenResourcesExecution mavenResourcesExecution, final List<ValueSource> valueSources) {
-        return new FileUtils.FilterWrapper() {
+    protected FilterWrapper createFilterWrapper(final MavenResourcesExecution mavenResourcesExecution, final List<ValueSource> valueSources) {
+        return new FilterWrapper() {
             public Reader getReader(Reader reader) {
                 MultiDelimiterStringSearchInterpolator interpolator = new MultiDelimiterStringSearchInterpolator();
                 final LinkedHashSet<String> delimiters = mavenResourcesExecution.getDelimiters();

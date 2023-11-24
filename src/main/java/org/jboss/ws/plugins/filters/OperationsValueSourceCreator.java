@@ -25,22 +25,19 @@ import java.util.Properties;
 
 import org.apache.maven.shared.filtering.MavenResourcesExecution;
 import org.codehaus.plexus.interpolation.ValueSource;
-import org.codehaus.plexus.logging.AbstractLogEnabled;
 
 /**
  * 
  * @plexus.component role="org.jboss.ws.plugins.filters.OperationsValueSourceCreator"
  *                   role-hint="operations"
  */
-public class OperationsValueSourceCreator extends AbstractLogEnabled implements ValueSourceCreator {
+public class OperationsValueSourceCreator implements ValueSourceCreator {
 
     @Override
     public ValueSource createValueSource(MavenResourcesExecution mavenResourcesExecution) {
         final Properties projectProperties = mavenResourcesExecution.getMavenProject().getProperties();
 
-        OperationsValueSource valueSource = new OperationsValueSource(projectProperties);
-        valueSource.enableLogging(this.getLogger());
-        return valueSource;
+        return new OperationsValueSource(projectProperties);
     }
 
 }
